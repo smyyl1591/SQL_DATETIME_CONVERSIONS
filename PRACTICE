@@ -1,0 +1,250 @@
+
+--[SQL 時間與轉換]
+
+--NUMERIC & DECIMAL:
+
+--decimal 資料型別最多可儲存 38 個數字,所有數字都能夠放到小數點的右邊
+--decimal 資料型別儲存了一個準確(精確)的數字表達法;不儲存值的近似值
+
+--p 小數點左邊和右邊數字之和,不包括小數點。指定精度或物件能夠控制的數字個數。
+--s 指定可放到"小數點右邊"的小數位數或數字個數。
+--p 和 s 必須遵守以下規則:0 <= s <= p <= 38
+--EX: 如 123.45,則 p=5,s=2 
+
+--1. 針對 decimal 和 numeric 資料類型，SQL Server 會將每個有效位數和小數位數的結合視為不同資料類型 
+--如，decimal(5,5) 和 decimal(5,0) 會視為是不同的資料類型
+
+--2. 在 Transact-SQL 陳述式中，會使用"必要的"最小有效位數與小數位數，自動將有小數點的常數轉換成 numeric 資料值
+--如，常數 12.345 會轉換成有效位數 5、小數位數 3 的 numeric 值
+     --從 decimal 或 numeric 轉換成 float 或 real 可能會導致有效位數的遺失
+	 --從 int、smallint、tinyint、float、real、money，或 smallmoney 轉換成 decimal 或 numeric 可能會導致溢位
+
+--REF: https://www.itread01.com/p/1201589.html 
+
+	 
+--EX1: 
+CREATE TABLE dbo.MyTable  
+(  
+  MyDecimalColumn DECIMAL(5,2)  
+,MyNumericColumn NUMERIC(10,5)
+  
+);  
+  
+GO  
+INSERT INTO dbo.MyTable VALUES (123, 12345.12);  
+GO  
+SELECT MyDecimalColumn, MyNumericColumn  
+FROM dbo.MyTable;  
+
+--OUTCOME:
+--MyDecimalColumn                         MyNumericColumn  
+--------------------------------------- ---------------------------------------  
+--123.00                                  12345.12000    
+--(1 row(s) affected)  
+
+--EX2:
+DROP TABLE #TEST 
+CREATE TABLE #TEST
+( c1 DECIMAL(5,2) 
+ ,c2 NUMERIC(10,2)
+)
+
+INSERT INTO #TEST VALUES (123.51, 12345.33); 
+SELECT * FROM #TEST 
+--OUTCOME:
+--c1	c2
+--123.51	12345.33
+
+
+--時間格式: (SQL)
+DATE 型態          - 格式是 YYYY-MM-DD
+DATETIME 型態      - 格式是 YYYY-MM-DD HH:MI:SS
+SMALLDATETIME 型態 - 格式是 YYYY-MM-DD HH:MI:SS
+
+--時間格式: (MYSQL)
+DATE 型態          - 格式是 YYYY-MM-DD
+DATETIME 型態      - 格式是 YYYY-MM-DD HH:MI:SS
+TIMESTAMP 型態     - 格式是 YYYY-MM-DD HH:MI:SS
+YEAR 型態          - 格式是 YYYY
+
+
+--時間運算: >=, <=, <, >, =, BETWEEN 
+SELECT * 
+FROM Orders 
+WHERE OrderDate>='2018-11-01' AND OrderDate<'2018-12-01'
+
+SELECT * 
+FROM Orders 
+WHERE OrderDate BETWEEN '2018-11-01' AND '2018-11-30'
+
+
+
+--#REF: https://www.fooish.com/sql/date.html 有關時間的運算函數
+
+--#TIMESTAMPDIFF(): 返回 datetime_expr2 − datetime_expr1 相減後的整數，其中 unit 表示整數的單位要是什麼
+--unit 可以是：
+MICROSECOND
+SECOND
+MINUTE
+HOUR
+DAY
+WEEK
+MONTH
+QUARTER
+YEAR
+
+--EG.
+SELECT TIMESTAMPDIFF(MONTH, '2003-02-01', '2003-05-01') 
+SELECT TIMESTAMPDIFF(YEAR, '2003-02-01', '2003-05-01')
+SELECT TIMESTAMPDIFF(MINUTE, '2003-02-01', '2003-05-01')
+
+
+--#處理日期加減的函數有 DATE_ADD() 和 DATE_SUB()，其中加日期時間是用 DATE_ADD()，減日期時間則是用 DATE_SUB()
+--通用格式: DATE_ADD(datetime, INTERVAL expr unit)
+--unit 可以是：
+MICROSECOND
+SECOND
+MINUTE
+HOUR
+DAY
+WEEK
+MONTH
+QUARTER
+YEAR
+SECOND_MICROSECOND
+MINUTE_MICROSECOND
+MINUTE_SECOND
+HOUR_MICROSECOND
+HOUR_SECOND
+HOUR_MINUTE
+DAY_MICROSECOND
+DAY_SECOND
+DAY_MINUTE
+DAY_HOUR
+YEAR_MONTH
+
+--EG. 
+SELECT DATE_ADD('2018-05-01',INTERVAL 1 YEAR);  --加一年
+'2019-05-01'
+SELECT DATE_ADD('2018-05-01',INTERVAL -1 YEAR); --減一年
+'2017-05-01'
+SELECT DATE_ADD('2020-12-31 23:59:59', INTERVAL 1 SECOND); --加一秒, DATETIME 
+'2021-01-01 00:00:00'
+
+
+
+--通用格式: EXTRACT(unit FROM datetime)
+--unit 如上
+--EG. 
+SELECT EXTRACT(YEAR FROM '2019-07-02')
+'2019'
+SELECT EXTRACT(HOUR FROM '2019-07-02 01:02:03');
+'1'
+
+
+----------------------------------------------------------------------------------------------
+--轉換函數:
+--[CAST Syntax]:  
+CAST ( expression AS data_type [ ( length ) ] )  
+--eg.1 CAST(Description AS VARCHAR(MAX)) AS Description
+--eg.2 WHERE CAST(CAST(s.SalesYTD AS INT) AS char(20)) LIKE '2%'
+--eg.3 CAST('2006-04-25T15:50:59.997' AS datetime) AS UsingCast,  
+     
+
+--[CONVERT Syntax]:  
+CONVERT ( data_type [ ( length ) ] , expression [ , style ] ) 
+--eg.1 CONVERT(datetime, '2006-04-25T15:50:59.997', 126) AS UsingConvertFrom_ISO8601
+--eg.2 CONVERT(BINARY(4), '4E616D65', 2) AS [Style 2, character to binary] => as [content] 為一個欄位名稱
+
+
+DECLARE @d1 DATE, @t1 TIME, @dt1 DATETIME;  
+SET @d1 = GETDATE();  
+SET @t1 = GETDATE();  
+SET @dt1 = GETDATE();  
+SET @d1 = GETDATE();  
+-- When converting date to datetime the minutes portion becomes zero.  
+SELECT @d1 AS [DATE], CAST (@d1 AS DATETIME) AS [date as datetime];  
+
+-- When converting time to datetime the date portion becomes zero   
+-- which converts to January 1, 1900.  
+SELECT @t1 AS [TIME], CAST (@t1 AS DATETIME) AS [time as datetime];  
+
+-- When converting datetime to date or time non-applicable portion is dropped.  
+SELECT @dt1 AS [DATETIME], CAST (@dt1 AS DATE) AS [datetime as date], 
+   CAST (@dt1 AS TIME) AS [datetime as time];  
+
+   
+--[COALESCE]:
+ /* x 內的 NULL 資料會被轉換成 0 */
+ SELECT 
+     x, y, COALESCE(x, 0) AS abs_length
+ FROM table_name;   
+  
+
+--[CASE]:
+ /* x 從原本資料型別轉為整數 */
+ SELECT x, y, CASE(x, 'INTEGER')
+ FROM table_name;  
+   
+   
+   
+   
+   
+--時間轉換: 當天日期 - 字串轉換datetime, 111格式
+SELECT CONVERT(NVARCHAR, GETDATE(), 111)	--output: 2019/08/23   
+
+
+--時間函數: ISDATE--
+--ISDATE ( expression )
+IF ISDATE('2009-05-12 10:19:41.177') = 1  
+    SELECT 'VALID';  
+ELSE  
+    SELECT 'INVALID';  
+--*SELECT ~= PRINT IN PYTHON	
+
+
+
+--時間函數: EOMONTH--
+--END OF MONTH 的那天日期
+--EOMONTH ( start_date [, month_to_add ] )  
+--eg.1
+DECLARE @date DATETIME = '12/1/2011';  
+SELECT EOMONTH ( @date ) AS Result;  
+GO     
+
+--eg.2 
+DECLARE @date DATETIME = GETDATE();  
+SELECT EOMONTH ( @date ) AS 'This Month';  
+SELECT EOMONTH ( @date, 1 ) AS 'Next Month';  
+SELECT EOMONTH ( @date, -1 ) AS 'Last Month';  
+GO  
+
+--result
+/* This Month  
+-----------------------  
+2011-12-31  
+  
+(1 row(s) affected)  
+  
+Next Month  
+-----------------------  
+2012-01-31  
+  
+(1 row(s) affected)  
+  
+Last Month  
+-----------------------  
+2011-11-30  
+  
+(1 row(s) affected)  */ 
+
+-----------------------------------------------------------------------------------------------
+   
+--引數--
+--expression: 任何有效的運算式
+--data_type: 目標資料類型。 這包括 xml、bigint*(毫秒計算的時間單位) 和 sql_variant。 無法使用別名資料類型。
+--length: 可指定目標資料類型長度的選擇性整數，用於允許使用者指定長度的資料類型。 預設值是 30。
+--style: 指定 CONVERT 函式如何轉譯 expression 的整數運算式。 針對樣式值 NULL，會傳回 NULL。 data_type 可決定範圍。
+
+------------------------------------------------------------------------------------------------
+
